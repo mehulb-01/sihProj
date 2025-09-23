@@ -3,30 +3,26 @@ import pandas as pd
 import smtplib
 from email.mime.text import MIMEText
 
-# ---------------------------
+# -------------------------
 # CONFIG
-# ---------------------------
-
+# -------------------------
 ENABLE_EMAIL = False  # set to True if you want email alerts
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 EMAIL_USER = "your_email@gmail.com"
 EMAIL_PASS = "your_app_password"  # Use App Password if Gmail
 
-
-# ---------------------------
+# -------------------------
 # RISK LOGIC
-# ---------------------------
+# -------------------------
 def calculate_risk(row):
     risk_score = 0
-
     if row['attendance'] < 75:
         risk_score += 1
     if row['marks_trend'].lower() == "down":
         risk_score += 1
     if row['fees_due'] > 0:
         risk_score += 1
-
     if risk_score >= 2:
         return "High"
     elif risk_score == 1:
@@ -34,17 +30,15 @@ def calculate_risk(row):
     else:
         return "Low"
 
-
-# ---------------------------
+# -------------------------
 # EMAIL ALERTS
-# ---------------------------
+# -------------------------
 def send_email(to_email, subject, message):
     try:
         msg = MIMEText(message)
         msg["Subject"] = subject
         msg["From"] = EMAIL_USER
         msg["To"] = to_email
-
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
             server.login(EMAIL_USER, EMAIL_PASS)
@@ -52,13 +46,94 @@ def send_email(to_email, subject, message):
     except Exception as e:
         st.error(f"Email failed: {e}")
 
+# -------------------------
+# MODERN DARK LOGIN PANEL
+# -------------------------
+def login_page():
+    st.markdown("""
+        <style>
+        .login-container {
+            background: #1a202c;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 #0000003a;
+            padding: 36px 32px 30px 32px;
+            max-width: 380px;
+            margin: 60px auto 16px auto;
+            color: #f0f6fc;
+        }
+        .login-logo {
+            text-align: center;
+            margin-bottom: 0.7em;
+        }
+        .login-title {
+            text-align: center;
+            font-size: 1.75em;
+            letter-spacing: 0.02em;
+            font-weight: bold;
+            margin-bottom: 0.8em;
+        }
+        .stTextInput>div>div>input {
+            background-color: #232833;
+            color: #f0f6fc;
+            border-radius: 7px;
+            border: 1px solid #3c475c;
+        }
+        .stButton>button {
+            background-color: #2563eb;
+            color: #f0f6fc;
+            border-radius: 6px;
+            border: none;
+            font-weight: 500;
+            padding: 8px 0px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    st.markdown('<div class="login-container">', unsafe_allow_html=True)
+    st.markdown('<div class="login-logo"><span style="font-size:2.8em;">🔒</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-title">Student Portal Login</div>', unsafe_allow_html=True)
+
+    with st.form("login_form", clear_on_submit=False):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.form_submit_button("Login"):
+            if username.strip() == "" or password.strip() == "":
+                st.error("Please provide both username and password! 🚫")
+            else:
+                st.session_state['logged_in'] = True
+                st.session_state['username'] = username
+
+                # ✅ Correct new way
+                st.query_params["logged_in"] = "true"
+                st.query_params["username"] = username
+
+                st.success(f"Logged in as {username}")
+                st.rerun()
+
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    with st.expander("Don't have an account? Register here"):
+        with st.form("registration_form", clear_on_submit=True):
+            new_username = st.text_input("Choose a username")
+            new_password = st.text_input("Choose a password", type="password")
+            confirm_password = st.text_input("Confirm password", type="password")
+            if st.form_submit_button("Register"):
+                if (
+                    new_username.strip() == "" or
+                    new_password.strip() == "" or
+                    confirm_password.strip() == ""
+                ):
+                    st.error("All fields required for registration! 🚫")
+                elif new_password != confirm_password:
+                    st.error("Passwords do not match! 🚫")
+                else:
+                    st.success(f"Account '{new_username}' registered! You can now log in.")
 
 # ---------------------------
 # USER SIDEBAR PANEL
 # ---------------------------
 def user_panel():
     st.sidebar.title("👤 User Panel")
-
     username = st.session_state.get('username', 'Guest')
     st.sidebar.markdown(f"**Logged in as:** {username}")
 
@@ -89,8 +164,6 @@ def user_panel():
     }
 
     st.sidebar.markdown("**Uploaded Files (Folder View):**")
-
-    # ✅ FIXED check
     if any(df is not None for df in files.values()):
         for file_name, df in files.items():
             if df is not None:
@@ -99,7 +172,6 @@ def user_panel():
                     if st.button(f"Reload {file_name}", key=f"reload_{file_name}"):
                         st.session_state['selected_file'] = file_name
                         st.success(f"{file_name} reloaded and ready for dashboard")
-
         if st.sidebar.button("Clear All Files"):
             for key in ['attendance', 'marks', 'fees']:
                 if key in st.session_state:
@@ -110,35 +182,11 @@ def user_panel():
 
     st.session_state['files_uploaded'] = all(df is not None for df in files.values())
 
-
-# ---------------------------
-# PAGES
-# ---------------------------
-def login_page():
-    st.title("Welcome to Student Risk Dashboard")
-    st.subheader("Login or Register")
-
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Login"):
-        if username.strip() != "" and password.strip() != "":
-            st.session_state['logged_in'] = True
-            st.session_state['username'] = username
-            st.query_params["logged_in"] = "true"
-            st.query_params["username"] = username
-            st.success(f"Logged in as {username}")
-            st.rerun()
-        else:
-            st.warning("Please enter both username and password")
-
-    if st.button("Register"):
-        st.info("Registration flow to be implemented")
-
-
+# -------------------------
+# DASHBOARD
+# -------------------------
 def dashboard():
     st.title("📊 Student Dropout Risk Dashboard")
-
     attendance = st.session_state.get('attendance')
     marks = st.session_state.get('marks')
     fees = st.session_state.get('fees')
@@ -181,12 +229,12 @@ def dashboard():
                 )
         st.success("High-risk student alerts sent!")
 
-
-# ---------------------------
+# -------------------------
 # APP ENTRY POINT
-# ---------------------------
+# -------------------------
 def main():
     query_params = st.query_params
+
     if query_params.get("logged_in") == "true":
         st.session_state['logged_in'] = True
         st.session_state['username'] = query_params.get("username", "")
@@ -204,7 +252,6 @@ def main():
             dashboard()
         else:
             st.info("Please upload all three required files from the user panel on the left to view the dashboard.")
-
 
 if __name__ == "__main__":
     main()
