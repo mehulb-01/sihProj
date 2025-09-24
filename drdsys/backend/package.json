@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "cors": "^2.8.5",
+    "fs-extra": "^11.3.2",
     "jsonwebtoken": "^9.0.2"
   }
 }
